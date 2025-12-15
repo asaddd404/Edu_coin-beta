@@ -6,12 +6,23 @@ from passlib.context import CryptContext # <--- Добавь это вверху
 from app import schemas, models, database, oauth2
 from app.routers.auth import pwd_context # Берем хешировалку паролей
 from sqlalchemy import desc
+from typing import List
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 router = APIRouter(
     prefix="/users",
     tags=["Users"]
 )
 
+# --- ДОБАВИТЬ В app/routers/users.py ---
+
+@router.get("/", response_model=List[schemas.UserShow])
+def read_users(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(database.get_db)
+):
+    users = db.query(models.User).offset(skip).limit(limit).all()
+    return users
 # 1. РЕГИСТРАЦИЯ (Доступна всем)
 @router.post("/", response_model=schemas.UserShow)
 def create_user(request: schemas.UserCreate, db: Session = Depends(database.get_db)):
@@ -108,3 +119,12 @@ def create_user_by_admin(user: schemas.UserCreate, db: Session = Depends(databas
     db.refresh(new_user)
     
     return new_user
+
+
+    # --- ВСТАВИТЬ В КОНЕЦ app/routers/users.py ---
+
+@router.get("/teachers", response_model=List[schemas.UserShow])
+def get_all_teachers(db: Session = Depends(database.get_db)):
+    # Возвращаем только тех, у кого роль "teacher"
+    teachers = db.query(models.User).filter(models.User.role == models.UserRole.TEACHER).all()
+    return teachers

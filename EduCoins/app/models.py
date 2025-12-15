@@ -5,17 +5,15 @@ from sqlalchemy.sql import func
 import enum
 from .database import Base
 
-# 1. ENUMS
+# 1. ENUMS (Роли и Статусы)
 class UserRole(str, enum.Enum):
     ADMIN = "admin"
-    MANAGER = "manager"
     TEACHER = "teacher"
     STUDENT = "student"
 
 class OrderStatus(str, enum.Enum):
-    WAITING = "waiting"
-    READY = "ready"
-    COMPLETED = "done"
+    PENDING = "pending"
+    COMPLETED = "completed"
     CANCELED = "canceled"
 
 # 2. ТАБЛИЦА ПОЛЬЗОВАТЕЛЕЙ
@@ -31,20 +29,22 @@ class User(Base):
     wallet_coins = Column(Integer, default=0)
     rating_points = Column(Integer, default=0)
 
-    # Внешний ключ на группу
+    # Внешний ключ: В какой группе учится этот студент?
     group_id = Column(Integer, ForeignKey("groups.id"), nullable=True)
 
-    # --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-    # Мы явно говорим: эта связь использует поле group_id
+    # СВЯЗИ:
+    # 1. Группа, где он учится
     student_group = relationship("Group", foreign_keys=[group_id], back_populates="students")
     
-    # Эта связь будет использовать teacher_id (определен в классе Group)
+    # 2. Группы, где он преподает (если это учитель)
+    # Используем foreign_keys="Group.teacher_id", так как класс Group еще не определен полностью
     teaching_groups = relationship("Group", back_populates="teacher", foreign_keys="Group.teacher_id")
 
-    # Транзакции
+    # 3. Транзакции
     sent_transactions = relationship("Transaction", foreign_keys="Transaction.sender_id", back_populates="sender")
     received_transactions = relationship("Transaction", foreign_keys="Transaction.receiver_id", back_populates="receiver")
     
+    # 4. Заказы в магазине
     orders = relationship("Order", back_populates="user")
 
 # 3. ТАБЛИЦА ГРУПП
@@ -52,14 +52,16 @@ class Group(Base):
     __tablename__ = "groups"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String)
+    name = Column(String, unique=True)
+    
+    # Кто учитель этой группы?
     teacher_id = Column(Integer, ForeignKey("users.id"))
 
-    # --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-    # Явно говорим: эта связь использует teacher_id
+    # СВЯЗИ:
+    # 1. Учитель этой группы
     teacher = relationship("User", foreign_keys=[teacher_id], back_populates="teaching_groups")
     
-    # А эта связь использует group_id из таблицы User
+    # 2. Ученики этой группы (ссылаемся на group_id в таблице User)
     students = relationship("User", foreign_keys="User.group_id", back_populates="student_group")
 
 # 4. ТАБЛИЦА ТОВАРОВ
@@ -80,8 +82,8 @@ class Order(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    product_id = Column(Integer, ForeignKey("products.id"))
-    status = Column(String, default=OrderStatus.WAITING)
+    product_id = Column(Integer, ForeignKey("products.id")) # Исправлено название таблицы товаров
+    status = Column(String, default=OrderStatus.PENDING)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="orders")
@@ -101,10 +103,10 @@ class Transaction(Base):
     sender = relationship("User", foreign_keys=[sender_id], back_populates="sent_transactions")
     receiver = relationship("User", foreign_keys=[receiver_id], back_populates="received_transactions")
 
-
-    # 7. ТАБЛИЦА НАСТРОЕК (Чтобы админ менял лимиты)
+# 7. ТАБЛИЦА НАСТРОЕК (ЛИМИТЫ)
+# Мы оставили только эту таблицу, SystemConfig удалили, так как это дубликат.
 class SystemSetting(Base):
     __tablename__ = "system_settings"
 
-    key = Column(String, primary_key=True, index=True) # Название настройки (например "daily_limit")
-    value = Column(Integer) # Значение (например 10)
+    key = Column(String, primary_key=True, index=True) # Например: "daily_limit"
+    value = Column(Integer, default=100) # Например: 100
