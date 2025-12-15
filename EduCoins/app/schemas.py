@@ -4,12 +4,33 @@ from typing import Optional, List
 from datetime import datetime
 from .models import UserRole, OrderStatus
 
-# --- СХЕМЫ ДЛЯ ТОКЕНА (AUTH) ---
+# --- СХЕМЫ ДЛЯ ПОЛЬЗОВАТЕЛЕЙ (Сначала они!) ---
+class UserBase(BaseModel):
+    username: str
+    full_name: str
+    role: UserRole = UserRole.STUDENT
+
+class UserCreate(UserBase):
+    password: str
+    group_id: Optional[int] = None 
+    role: str = "student" # <--- Убедись, что можно передать роль (или она есть в UserBase)
+
+class UserShow(UserBase):
+    id: int
+    wallet_coins: int
+    rating_points: int
+    group_id: Optional[int]
+    
+    class Config:
+        from_attributes = True
+
+# --- СХЕМЫ ДЛЯ ТОКЕНА (Теперь можно использовать UserShow) ---
 class Token(BaseModel):
     access_token: str
     token_type: str
-    role: str # Отдадим роль сразу, чтобы фронт знал, куда редиректить
-    user: UserShow
+    role: str 
+    user: UserShow # <-- Теперь Python знает, что такое UserShow
+    
 class TokenData(BaseModel):
     username: Optional[str] = None
 
@@ -24,26 +45,6 @@ class Group(GroupBase):
     id: int
     teacher_id: int
     
-    class Config:
-        from_attributes = True # Важная настройка для работы с ORM
-
-# --- СХЕМЫ ДЛЯ ПОЛЬЗОВАТЕЛЕЙ ---
-class UserBase(BaseModel):
-    username: str
-    full_name: str
-    role: UserRole = UserRole.STUDENT
-
-class UserCreate(UserBase):
-    password: str
-    group_id: Optional[int] = None # Учитель может не иметь группы, ученик обязан (но пока optional)
-
-class UserShow(UserBase):
-    id: int
-    wallet_coins: int
-    rating_points: int
-    group_id: Optional[int]
-    
-    # Мы НЕ возвращаем password! Это безопасно.
     class Config:
         from_attributes = True
 
