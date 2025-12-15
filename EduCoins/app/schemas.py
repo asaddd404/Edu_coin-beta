@@ -9,7 +9,7 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     role: str # Отдадим роль сразу, чтобы фронт знал, куда редиректить
-
+    user: UserShow
 class TokenData(BaseModel):
     username: Optional[str] = None
 

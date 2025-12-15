@@ -51,7 +51,10 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     access_token = create_access_token(data={"sub": user.username, "role": user.role})
     
     return {
-        "access_token": access_token, 
+        "access_token": access_token,
         "token_type": "bearer",
-        "role": user.role
+        "role": user.role,
+        "user": user # <-- SQLAlchemy модель сама превратится в схему UserShow
     }
+🔥 Итоговый план запуска
+И
